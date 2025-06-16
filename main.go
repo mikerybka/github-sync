@@ -206,7 +206,20 @@ func registerHook(ghToken, repoID, webhookURL string) error {
 			ContentType: "json",
 		},
 	})
+	if err != nil {
+		panic(err)
+	}
 	req, err = http.NewRequest("POST", apiURL, bytes.NewReader(body))
+	if err != nil {
+		panic(err)
+	}
+	res, err = http.DefaultClient.Do(req)
+	if err != nil {
+		return err
+	}
+	defer res.Body.Close()
+	io.Copy(os.Stdout, res.Body)
+
 	// TODO
 	return nil
 }
