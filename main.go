@@ -243,5 +243,6 @@ type HookConfig struct {
 
 func webhookHandler(w http.ResponseWriter, r *http.Request) {
 	io.Copy(os.Stdout, r.Body)
+	fmt.Println()
 	fmt.Fprintln(w, "ok")
 }
