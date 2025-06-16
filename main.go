@@ -232,7 +232,29 @@ type HookConfig struct {
 }
 
 func webhookHandler(w http.ResponseWriter, r *http.Request) {
-	io.Copy(os.Stdout, r.Body)
-	fmt.Println()
+	// Parse webhook
+	req := &WebhookRequest{}
+	err := json.NewDecoder(r.Body).Decode(req)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	// Pull
+	path := filepath.Join(util.HomeDir(), req.Repository.Name)
+	err = pull(path)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
 	fmt.Fprintln(w, "ok")
+}
+
+type WebhookRequest struct {
+	Repository *GithubRepository `json:"repository"`
+}
+
+type GithubRepository struct {
+	Name string `json:"name"`
 }
