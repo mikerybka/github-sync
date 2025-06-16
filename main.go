@@ -16,7 +16,6 @@ import (
 )
 
 func main() {
-	ghUser := util.RequireEnvVar("GITHUB_USER")
 	token := util.RequireEnvVar("GITHUB_TOKEN")
 	webhookURL := util.RequireEnvVar("EXTERNAL_URL")
 	port := util.EnvVar("PORT", "2067")
@@ -46,24 +45,26 @@ func main() {
 				}
 			}
 		} else {
-			// If the namespace is already taken by a file
+			// Error if the namespace is already taken by a file
 			if !fi.IsDir() {
 				fmt.Println("Error:", path, "is file")
 				return
 			}
 
-			// check branch
+			// Error if path is not a git repo
 			branch, err := getBranch(path)
 			if err != nil {
 				fmt.Println("Error:", err)
 				return
 			}
+
+			// Error if path is a git repo but checked out to the wrong branch
 			if branch != repo.Branch {
 				fmt.Println("Error:", repo.ID, "is checked out to the wrong branch")
 				return
 			}
 
-			// pull
+			// Pull
 			err = pull(path)
 			if err != nil {
 				fmt.Printf("Error pulling %s: %s\n", id, err)
@@ -71,7 +72,7 @@ func main() {
 			}
 		}
 
-		err = registerHook(ghUser, token, repo.ID, webhookURL)
+		err = registerHook(token, repo.ID, webhookURL)
 		if err != nil {
 			fmt.Println("Error:", err)
 			return
@@ -87,24 +88,13 @@ func main() {
 	}
 }
 
-// clone clones the Git repository at gitURL into the directory path.
-// If branch is non‑empty, only that branch is cloned and checked out.
-//
-// Examples:
-//
-//	err := clone("/tmp/myrepo", "https://github.com/user/project.git", "main")
-//	err := clone("/tmp/myrepo", "git@github.com:user/project.git", "") // default branch
 func clone(path, gitURL, branch string) error {
 	args := []string{"clone"}
-
 	if branch != "" {
 		// --single-branch avoids unnecessary history for other branches.
 		args = append(args, "--branch", branch, "--single-branch")
 	}
-
 	args = append(args, gitURL, path)
-
-	// #nosec G204 – the arguments are constructed safely above.
 	cmd := exec.Command("git", args...)
 	if out, err := cmd.CombinedOutput(); err != nil {
 		return fmt.Errorf("git clone failed: %v\n%s", err, out)
@@ -163,7 +153,7 @@ type SystemdService struct {
 	User  string            `json:"user"`
 }
 
-func registerHook(ghUser, ghToken, repoID, webhookURL string) error {
+func registerHook(ghToken, repoID, webhookURL string) error {
 	// Get list of current hooks
 	apiURL := fmt.Sprintf("https://api.github.com/repos/%s/hooks", repoID)
 	req, err := http.NewRequest("GET", apiURL, nil)
@@ -184,7 +174,7 @@ func registerHook(ghUser, ghToken, repoID, webhookURL string) error {
 
 	// Return early if URL is already registered
 	for _, hook := range hooks {
-		if hook.Config.URL == webhookURL && hook.Active == true && includes(hook.Events, "push") && hook.Config.ContentType == "json" {
+		if hook.Config.URL == webhookURL && hook.Active && includes(hook.Events, "push") && hook.Config.ContentType == "json" {
 			return nil
 		}
 	}
