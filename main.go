@@ -230,9 +230,9 @@ func includes(list []string, s string) bool {
 }
 
 type Hook struct {
-	Name   string   `json:"name"`
-	Active bool     `json:"active"`
-	Events []string `json:"events"`
+	Name   string      `json:"name"`
+	Active bool        `json:"active"`
+	Events []string    `json:"events"`
 	Config *HookConfig `json:"config"`
 }
 
@@ -245,3 +245,5 @@ func webhookHandler(w http.ResponseWriter, r *http.Request) {
 	io.Copy(os.Stdout, r.Body)
 	fmt.Fprintln(w, "ok")
 }
+
+func Test() {}
