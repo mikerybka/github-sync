@@ -16,6 +16,7 @@ import (
 )
 
 func main() {
+	ghUser := util.RequireEnvVar("GITHUB_USER")
 	token := util.RequireEnvVar("GITHUB_TOKEN")
 	webhookURL := util.RequireEnvVar("EXTERNAL_URL")
 	port := util.EnvVar("PORT", "2067")
@@ -26,7 +27,6 @@ func main() {
 		return
 	}
 
-	// Clone repos
 	for id, repo := range config {
 		// Check if folder exists
 		name := strings.Split(id, "/")[1]
@@ -70,11 +70,8 @@ func main() {
 				return
 			}
 		}
-	}
 
-	// Set up webhooks
-	for _, repo := range config {
-		err := registerHook(token, repo.ID, webhookURL)
+		err = registerHook(ghUser, token, repo.ID, webhookURL)
 		if err != nil {
 			fmt.Println("Error:", err)
 			return
@@ -166,7 +163,7 @@ type SystemdService struct {
 	User  string            `json:"user"`
 }
 
-func registerHook(ghToken, repoID, webhookURL string) error {
+func registerHook(ghUser, ghToken, repoID, webhookURL string) error {
 	// Get list of current hooks
 	apiURL := fmt.Sprintf("https://api.github.com/repos/%s/hooks", repoID)
 	req, err := http.NewRequest("GET", apiURL, nil)
@@ -185,10 +182,6 @@ func registerHook(ghToken, repoID, webhookURL string) error {
 		panic(err)
 	}
 
-	// Print result (TODO: remove)
-	b, _ := json.MarshalIndent(hooks, "", "  ")
-	fmt.Println(string(b))
-
 	// Return early if URL is already registered
 	for _, hook := range hooks {
 		if hook.Config.URL == webhookURL && hook.Active == true && includes(hook.Events, "push") && hook.Config.ContentType == "json" {
@@ -198,7 +191,7 @@ func registerHook(ghToken, repoID, webhookURL string) error {
 
 	// Create the hook
 	body, err := json.Marshal(Hook{
-		Name:   webhookURL,
+		Name:   "web",
 		Active: true,
 		Events: []string{"push"},
 		Config: &HookConfig{
@@ -213,14 +206,17 @@ func registerHook(ghToken, repoID, webhookURL string) error {
 	if err != nil {
 		panic(err)
 	}
+	req.Header.Add("Authorization", fmt.Sprintf("token %s", ghToken))
 	res, err = http.DefaultClient.Do(req)
 	if err != nil {
 		return err
 	}
 	defer res.Body.Close()
-	io.Copy(os.Stdout, res.Body)
+	if res.StatusCode != 201 {
+		b, _ := io.ReadAll(res.Body)
+		return fmt.Errorf("%d: %s", res.StatusCode, strings.TrimSpace(string(b)))
+	}
 
-	// TODO
 	return nil
 }
 
@@ -237,7 +233,7 @@ type Hook struct {
 	Name   string   `json:"name"`
 	Active bool     `json:"active"`
 	Events []string `json:"events"`
-	Config *HookConfig
+	Config *HookConfig `json:"config"`
 }
 
 type HookConfig struct {
