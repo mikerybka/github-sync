@@ -245,7 +245,3 @@ func webhookHandler(w http.ResponseWriter, r *http.Request) {
 	io.Copy(os.Stdout, r.Body)
 	fmt.Fprintln(w, "ok")
 }
-
-func Test() {
-	
-}
