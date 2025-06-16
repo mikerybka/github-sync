@@ -240,12 +240,81 @@ func webhookHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Read config
+	repos, err := readConfig(filepath.Join(util.HomeDir(), "repos.json"))
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	repoID := req.Repository.FullName
+	repo, ok := repos[repoID]
+	if !ok {
+		http.Error(w, fmt.Sprintf("repo %s not configured", repoID), http.StatusBadRequest)
+		return
+	}
+
 	// Pull
 	path := filepath.Join(util.HomeDir(), req.Repository.Name)
 	err = pull(path)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
+	}
+
+	// Stop service
+	if repo.Service.Name != "" {
+		fmt.Println("systemctl stop", repo.Service.Name)
+		cmd := exec.Command("systemctl", "stop", repo.Service.Name)
+		cmd.Dir = path
+		cmd.Stdout = os.Stdout
+		cmd.Stderr = os.Stderr
+		err = cmd.Run()
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+	}
+
+	// Install
+	if repo.Install != "" {
+		fmt.Println(repo.Install)
+		cmd := exec.Command("bash", "-c", repo.Install)
+		cmd.Dir = path
+		cmd.Stdout = os.Stdout
+		cmd.Stderr = os.Stderr
+		err = cmd.Run()
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+	}
+
+	// Reload systemd
+	if repo.Service.Name != "" {
+		fmt.Println("systemctl daemon-reload")
+		cmd := exec.Command("systemctl", "daemon-reload")
+		cmd.Dir = path
+		cmd.Stdout = os.Stdout
+		cmd.Stderr = os.Stderr
+		err = cmd.Run()
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+	}
+
+	// Start service
+	if repo.Service.Name != "" {
+		fmt.Println("systemctl start", repo.Service.Name)
+		cmd := exec.Command("systemctl", "start", repo.Service.Name)
+		cmd.Dir = path
+		cmd.Stdout = os.Stdout
+		cmd.Stderr = os.Stderr
+		err = cmd.Run()
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
 	}
 
 	fmt.Fprintln(w, "ok")
@@ -256,5 +325,6 @@ type WebhookRequest struct {
 }
 
 type GithubRepository struct {
-	Name string `json:"name"`
+	Name     string `json:"name"`
+	FullName string `json:"full_name"`
 }
