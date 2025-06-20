@@ -11,6 +11,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/mikerybka/util"
 )
@@ -232,6 +233,8 @@ type HookConfig struct {
 }
 
 func webhookHandler(w http.ResponseWriter, r *http.Request) {
+	start := time.Now()
+
 	// Parse webhook
 	req := &WebhookRequest{}
 	err := json.NewDecoder(r.Body).Decode(req)
@@ -317,7 +320,7 @@ func webhookHandler(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	fmt.Fprintln(w, "ok")
+	fmt.Fprintln(w, "ok in", time.Since(start).Milliseconds(), "ms")
 }
 
 type WebhookRequest struct {
