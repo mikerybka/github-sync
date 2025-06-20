@@ -152,6 +152,7 @@ type SystemdService struct {
 	Env   map[string]string `json:"env"`
 	Start string            `json:"start"`
 	User  string            `json:"user"`
+	Dir   string            `json:"dir"`
 }
 
 func registerHook(ghToken, repoID, webhookURL string) error {
