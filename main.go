@@ -81,6 +81,7 @@ func main() {
 
 	// Start webhook handler
 	http.HandleFunc("/", webhookHandler)
+	fmt.Println("Listening on port", port)
 	err = http.ListenAndServe(":"+port, nil)
 	if err != nil {
 		fmt.Println("Error:", err)
