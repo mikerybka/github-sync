@@ -34,8 +34,7 @@ func main() {
 		fi, err := os.Stat(path)
 		if err != nil {
 			if !errors.Is(err, os.ErrNotExist) {
-				fmt.Println(err)
-				return
+				panic(err)
 			} else {
 				// If the folder doesn't exist, clone
 				gitURL := fmt.Sprintf("https://github.com/%s.git", id)
