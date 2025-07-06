@@ -33,7 +33,7 @@ func main() {
 		path := filepath.Join(util.HomeDir(), name)
 		fi, err := os.Stat(path)
 		if err != nil {
-			if errors.Is(err, os.ErrNotExist) {
+			if !errors.Is(err, os.ErrNotExist) {
 				fmt.Println(err)
 				return
 			} else {
