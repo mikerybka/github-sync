@@ -19,7 +19,7 @@ import (
 func main() {
 	token := util.RequireEnvVar("GITHUB_TOKEN")
 	webhookURL := util.RequireEnvVar("EXTERNAL_URL")
-	port := util.EnvVar("PORT", "2067")
+	port := util.RequireEnvVar("PORT")
 	configFile := filepath.Join(util.HomeDir(), "repos.json")
 	config, err := readConfig(configFile)
 	if err != nil {
@@ -292,6 +292,8 @@ func webhookHandler(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
+
+	// Write service file
 
 	// Reload systemd
 	if repo.Service.Name != "" {
